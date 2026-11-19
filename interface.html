@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversor de áudio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231B1F2A'/%3E%3Cg fill='%23fff'%3E%3Crect x='7' y='13' width='2.6' height='6' rx='1.3'/%3E%3Crect x='11.5' y='9' width='2.6' height='14' rx='1.3'/%3E%3Crect x='16' y='6' width='2.6' height='20' rx='1.3'/%3E%3Crect x='20.5' y='11' width='2.6' height='10' rx='1.3'/%3E%3C/g%3E%3Crect x='25' y='14' width='2.6' height='4' rx='1.3' fill='%235B70FF'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --papel: #EEF0F4;
+    --superficie: #FFFFFF;
+    --tela: #F5F6F9;
+    --tinta: #1B1F2A;
+    --tinta-2: #3A4050;
+    --suave: #6A7080;
+    --linha: #DFE2E9;
+    --barra: #CDD2DC;
+    --cobalto: #2B44E6;
+    --cobalto-suave: #E7EAFD;
+    --ok: #12805A;
+    --erro: #B9302A;
+    --erro-suave: #FBECEB;
+    --f-display: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --f-texto: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --sombra-deck: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 6px rgba(27,38,82,.05), 0 22px 44px -22px rgba(27,38,82,.28);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font: 15px/1.5 var(--f-texto);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--cobalto); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .app {
+    max-width: 1080px; margin: 0 auto; padding: 22px 36px 26px;
+    height: 100vh; min-height: 560px;
+    display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr); column-gap: 44px;
+  }
+  .topo { grid-column: 1 / -1; }
+  .col { min-height: 0; }
+  .col-dir { display: flex; flex-direction: column; padding-top: 2px; }
+
+  /* topo */
+  .topo { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+  .marca { width: 30px; height: 30px; display: block; }
+  .topo strong { font: 600 15px/1 var(--f-display); letter-spacing: .01em; }
+
+  /* abertura */
+  h1 {
+    font: 600 34px/1.05 var(--f-display);
+    letter-spacing: -.015em;
+    margin: 0 0 8px;
+  }
+  .abertura p { margin: 0 0 22px; color: var(--suave); max-width: 42ch; }
+
+  /* campo de link */
+  .campo-link {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+    padding: 6px 6px 6px 14px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .campo-link:focus-within { border-color: var(--cobalto); box-shadow: 0 0 0 4px var(--cobalto-suave); }
+  .campo-link svg { flex: none; color: var(--suave); }
+  .campo-link input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+    padding: 9px 4px; font-size: 15px;
+  }
+  .campo-link input::placeholder { color: #A1A7B5; }
+  .btn-colar {
+    border: 0; background: var(--tela); border-radius: 10px;
+    padding: 8px 14px; font-weight: 600; font-size: 13.5px; color: var(--tinta-2);
+  }
+  .btn-colar:hover { background: #E9EBF1; }
+
+  /* deck: a peça central */
+  .deck {
+    margin-top: 16px;
+    background: var(--superficie);
+    border: 1px solid #E3E6EC;
+    border-radius: 22px;
+    box-shadow: var(--sombra-deck);
+    padding: 16px;
+  }
+  .faixa { display: flex; align-items: center; gap: 14px; min-height: 64px; }
+  .capa {
+    flex: none; width: 104px; height: 58px; border-radius: 10px; overflow: hidden;
+    background: linear-gradient(135deg, #E6E9F0, #F3F4F8);
+    display: grid; place-items: center; color: #AEB4C2;
+  }
+  .capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .faixa-txt { min-width: 0; flex: 1; }
+  .faixa-titulo {
+    margin: 0; font-weight: 600; font-size: 15px; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .faixa-sub { margin: 2px 0 0; color: var(--suave); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .duracao { flex: none; font: 500 14px/1 var(--f-display); color: var(--suave); font-variant-numeric: tabular-nums; align-self: flex-start; padding-top: 4px; }
+
+  .tela {
+    margin-top: 14px;
+    background: var(--tela);
+    border-radius: 14px;
+    box-shadow: inset 0 1px 2px rgba(27,38,82,.07);
+    padding: 16px 16px 12px;
+  }
+  .onda { position: relative; height: 76px; }
+  .onda-camada {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .onda-camada i {
+    display: block; width: 3px; border-radius: 3px;
+    height: calc(var(--a, .15) * 100%);
+    min-height: 3px;
+    background: var(--barra);
+    transition: height .55s cubic-bezier(.2,.8,.2,1);
+    transition-delay: calc(var(--n) * 6ms);
+  }
+  .onda-cheia { clip-path: inset(0 calc(100% - var(--pct, 0%)) 0 0); transition: clip-path .35s ease-out; }
+  .onda-cheia i { background: var(--cobalto); }
+  .deck[data-fase="convertendo"] .onda-cheia i,
+  .deck[data-fase="buscando"] .onda-base i {
+    animation: pulso 1.1s ease-in-out infinite alternate;
+    animation-delay: calc(var(--n) * -37ms);
+  }
+  @keyframes pulso { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
+
+  .leitura { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 8px; }
+  .pct { font: 600 30px/1 var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .pct small { font-size: 16px; font-weight: 500; color: var(--suave); margin-left: 1px; }
+  .etapa { color: var(--suave); font-size: 13.5px; text-align: right; display: flex; align-items: center; gap: 8px; }
+  .led { width: 7px; height: 7px; border-radius: 50%; background: var(--barra); flex: none; }
+  .deck[data-fase="baixando"] .led, .deck[data-fase="convertendo"] .led, .deck[data-fase="iniciando"] .led { background: var(--cobalto); box-shadow: 0 0 0 3px var(--cobalto-suave); }
+  .deck[data-fase="concluido"] .led { background: var(--ok); }
+  .deck[data-fase="erro"] .led { background: var(--erro); }
+  .deck[data-fase="concluido"] .pct { color: var(--ok); }
+  .link-pasta { border: 0; background: none; padding: 0; color: var(--cobalto); font-weight: 600; font-size: 13.5px; }
+  .link-pasta:hover { text-decoration: underline; }
+
+  /* ajustes */
+  .ajustes { display: grid; gap: 4px; }
+  .linha {
+    display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 12px;
+    min-height: 46px; border-bottom: 1px solid var(--linha);
+  }
+  .linha:last-child { border-bottom: 0; }
+  .rotulo { color: var(--suave); font-size: 13.5px; }
+
+  .segmentado {
+    position: relative; display: inline-grid; grid-template-columns: 1fr 1fr;
+    background: #E4E7EE; border-radius: 10px; padding: 3px; width: 168px;
+    grid-column: 2 / 4; justify-self: start;
+  }
+  .segmentado button {
+    position: relative; z-index: 1; border: 0; background: none;
+    padding: 6px 0; font: 600 14px/1.2 var(--f-display); letter-spacing: .03em; color: var(--suave);
+    border-radius: 8px; transition: color .2s;
+  }
+  .segmentado button[aria-checked="true"] { color: var(--tinta); }
+  .segmentado .trilho {
+    position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+    background: var(--superficie); border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(27,38,82,.14);
+    transition: transform .25s cubic-bezier(.3,.9,.3,1);
+  }
+  .segmentado[data-valor="wav"] .trilho { transform: translateX(100%); }
+
+  .chips { display: flex; gap: 6px; grid-column: 2 / 4; flex-wrap: wrap; }
+  .chips button {
+    border: 1px solid var(--linha); background: var(--superficie); border-radius: 999px;
+    padding: 5px 12px; font-size: 13.5px; color: var(--tinta-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .chips button[aria-checked="true"] { border-color: var(--cobalto); background: var(--cobalto-suave); color: var(--cobalto); font-weight: 600; }
+  .nota { grid-column: 2 / 4; font-size: 13.5px; color: var(--tinta-2); }
+
+  .alternar { cursor: pointer; }
+  .alternar .txt { font-size: 14px; }
+  .chave { position: relative; width: 38px; height: 22px; flex: none; }
+  .chave input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .chave span { position: absolute; inset: 0; border-radius: 99px; background: #D3D7E0; transition: background .2s; pointer-events: none; }
+  .chave span::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .2s;
+  }
+  .chave input:checked + span { background: var(--cobalto); }
+  .chave input:checked + span::after { transform: translateX(16px); }
+  .chave input:focus-visible + span { outline: 2px solid var(--cobalto); outline-offset: 2px; }
+
+  .pasta {
+    border: 0; background: none; padding: 0; text-align: left; min-width: 0;
+    font-size: 14px; color: var(--tinta-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pasta svg { flex: none; color: var(--suave); }
+  .pasta span { overflow: hidden; text-overflow: ellipsis; }
+  .pasta:hover span { text-decoration: underline; }
+  .btn-texto { border: 0; background: none; color: var(--cobalto); font-weight: 600; font-size: 13.5px; padding: 6px 2px; }
+  .btn-texto:hover { text-decoration: underline; }
+
+  /* ação */
+  .principal {
+    margin-top: 20px; width: 100%; height: 56px;
+    border: 0; border-radius: 16px;
+    background: var(--tinta); color: #fff;
+    font: 600 16px/1 var(--f-display); letter-spacing: .02em;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 10px 22px -12px rgba(27,31,42,.7);
+    transition: transform .12s, background .2s, box-shadow .2s;
+  }
+  .principal:hover:not(:disabled) { background: #262B38; }
+  .principal:active:not(:disabled) { transform: translateY(1px); }
+  .principal:disabled { background: #C7CCD7; box-shadow: none; cursor: default; }
+
+  .aviso { margin: 12px 0 0; font-size: 13.5px; border-radius: 12px; padding: 10px 14px; }
+  .aviso:empty { display: none; }
+  .aviso.erro { background: var(--erro-suave); color: var(--erro); }
+  .aviso.info { background: #FFF7E6; color: #8A5A00; }
+
+  /* histórico */
+  .historico { margin-top: 26px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .historico h2 { font: 600 17px/1 var(--f-display); margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; }
+  .historico h2 span { font: 500 14px/1 var(--f-display); color: var(--suave); }
+  .lista { list-style: none; margin: 0; padding: 0; background: var(--superficie); border: 1px solid var(--linha); border-radius: 16px; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+  .lista li { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; }
+  .lista li + li { border-top: 1px solid #ECEEF2; }
+  .lista li.novo { animation: entrar .5s cubic-bezier(.2,.8,.2,1); }
+  @keyframes entrar { from { background: var(--cobalto-suave); } to { background: transparent; } }
+  .mini { width: 52px; height: 30px; border-radius: 6px; object-fit: cover; flex: none; background: #E6E9F0; }
+  .item-txt { flex: 1; min-width: 0; }
+  .item-titulo { margin: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta { margin: 1px 0 0; font-size: 12.5px; color: var(--suave); display: flex; gap: 10px; align-items: center; }
+  .selo { font: 600 11.5px/1 var(--f-display); letter-spacing: .04em; color: var(--tinta-2); background: #EDEFF3; border-radius: 5px; padding: 3px 6px; }
+  .acoes { display: flex; gap: 2px; flex: none; }
+  .icone { width: 34px; height: 34px; border: 0; border-radius: 9px; background: none; color: var(--suave); display: grid; place-items: center; }
+  .icone:hover { background: var(--tela); color: var(--tinta); }
+  .vazio { margin: 0; padding: 22px; text-align: center; color: var(--suave); font-size: 14px; background: var(--superficie); border: 1px dashed #D5D9E2; border-radius: 16px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+  @media (max-width: 860px) {
+    .app { display: block; height: auto; max-width: 580px; padding-bottom: 40px; }
+    .ajustes { margin-top: 22px; }
+    .historico { margin-top: 34px; }
+  }
+  @media (max-width: 460px) {
+    h1 { font-size: 28px; }
+    .linha { grid-template-columns: 78px 1fr auto; }
+    .capa { width: 84px; height: 48px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="topo">
+    <svg class="marca" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#1B1F2A"/>
+      <g fill="#fff"><rect x="7" y="13" width="2.6" height="6" rx="1.3"/><rect x="11.5" y="9" width="2.6" height="14" rx="1.3"/><rect x="16" y="6" width="2.6" height="20" rx="1.3"/><rect x="20.5" y="11" width="2.6" height="10" rx="1.3"/></g>
+      <rect x="25" y="14" width="2.6" height="4" rx="1.3" fill="#5B70FF"/>
+    </svg>
+    <strong>Conversor de áudio</strong>
+  </header>
+
+  <div class="col col-esq">
+
+  <section class="abertura">
+    <h1>YouTube para MP3 ou WAV</h1>
+    <p>Cole o link de um vídeo ou de uma playlist. O áudio vai direto para a sua pasta de músicas.</p>
+  </section>
+
+  <div class="campo-link">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+    <input id="link" type="url" placeholder="Cole aqui o link do YouTube" autocomplete="off" spellcheck="false" aria-label="Link do YouTube">
+    <button class="btn-colar" id="colar" type="button">Colar</button>
+  </div>
+
+  <section class="deck" id="deck" data-fase="vazio" aria-live="polite">
+    <div class="faixa">
+      <div class="capa" id="capa">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>
+      </div>
+      <div class="faixa-txt">
+        <p class="faixa-titulo" id="titulo">Nenhuma faixa ainda</p>
+        <p class="faixa-sub" id="sub">O vídeo aparece aqui assim que você colar o link.</p>
+      </div>
+      <span class="duracao" id="duracao"></span>
+    </div>
+    <div class="tela">
+      <div class="onda" id="onda">
+        <div class="onda-camada onda-base"></div>
+        <div class="onda-camada onda-cheia"></div>
+      </div>
+      <div class="leitura">
+        <span class="pct" id="pct">0<small>%</small></span>
+        <span class="etapa"><span id="etapa">Aguardando um link</span><span class="led"></span></span>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
+  <div class="col col-dir">
+  <section class="ajustes">
+    <div class="linha">
+      <span class="rotulo" id="r-formato">Formato</span>
+      <div class="segmentado" id="formato" role="radiogroup" aria-labelledby="r-formato" data-valor="mp3">
+        <button type="button" role="radio" aria-checked="true" data-valor="mp3">MP3</button>
+        <button type="button" role="radio" aria-checked="false" data-valor="wav">WAV</button>
+        <span class="trilho" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="linha" id="linha-qualidade">
+      <span class="rotulo" id="r-qualidade">Qualidade</span>
+      <div class="chips" id="qualidade" role="radiogroup" aria-labelledby="r-qualidade">
+        <button type="button" role="radio" aria-checked="true" data-valor="320">320 kbps</button>
+        <button type="button" role="radio" aria-checked="false" data-valor="192">192 kbps</button>
+        <button type="button" role="radio" aria-checked="false" data-valor="128">128 kbps</button>
+      </div>
+    </div>
+    <div class="linha" id="linha-wav" hidden>
+      <span class="rotulo">Qualidade</span>
+      <span class="nota">Sem perdas, PCM 16-bit. Arquivo cerca de 10× maior que o MP3.</span>
+    </div>
+    <label class="linha alternar" id="linha-playlist" hidden>
+      <span class="rotulo">Playlist</span>
+      <span class="txt">Baixar a playlist inteira</span>
+      <span class="chave"><input type="checkbox" id="playlist" role="switch"><span></span></span>
+    </label>
+    <div class="linha">
+      <span class="rotulo">Salvar em</span>
+      <button class="pasta" id="pasta" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg>
+        <span id="pasta-txt">Músicas</span>
+      </button>
+      <button class="btn-texto" id="alterar" type="button">Alterar</button>
+    </div>
+  </section>
+
+  <button class="principal" id="converter" type="button" disabled>Converter para MP3</button>
+  <p class="aviso" id="aviso" role="alert"></p>
+
+  <section class="historico">
+    <h2>Convertidas <span id="contagem"></span></h2>
+    <ul class="lista" id="lista" hidden></ul>
+    <p class="vazio" id="vazio">As faixas que você converter aparecem aqui.</p>
+  </section>
+  </div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const BARRAS = 84;
+const ytRegex = /^(https?:\/\/)?((www|m|music)\.)?(youtube\.com|youtu\.be)\/\S+/i;
+
+const st = {
+  url: "", info: null, formato: "mp3", qualidade: "320",
+  job: 0, rodando: false, ultimoJobVisto: 0, totalHist: -1,
+};
+
+/* ---------- forma de onda ---------- */
+function semente(texto) {
+  let h = 2166136261;
+  for (const c of texto) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+}
+function alturas(id) {
+  if (!id) return Array.from({ length: BARRAS }, (_, i) => 0.06 + 0.04 * Math.sin(i * 0.5) ** 2);
+  const r = semente(id);
+  const f1 = 0.08 + r() * 0.12, f2 = 0.3 + r() * 0.4, fase = r() * 6;
+  return Array.from({ length: BARRAS }, (_, i) => {
+    const env = 0.55 + 0.45 * Math.sin(i * f1 + fase);
+    const v = env * (0.45 + 0.55 * Math.abs(Math.sin(i * f2 + fase * 2))) * (0.7 + r() * 0.3);
+    return Math.max(0.08, Math.min(1, v));
+  });
+}
+function montarOnda() {
+  for (const camada of document.querySelectorAll(".onda-camada")) {
+    camada.innerHTML = Array.from({ length: BARRAS }, (_, n) => `<i style="--n:${n}"></i>`).join("");
+  }
+  desenharOnda("");
+}
+function desenharOnda(id) {
+  const hs = alturas(id);
+  for (const camada of document.querySelectorAll(".onda-camada")) {
+    camada.querySelectorAll("i").forEach((b, n) => b.style.setProperty("--a", hs[n].toFixed(3)));
+  }
+}
+function definirPct(p) {
+  const v = Math.max(0, Math.min(100, p));
+  $("#onda").style.setProperty("--pct", v + "%");
+  $("#pct").innerHTML = Math.floor(v) + "<small>%</small>";
+}
+
+/* ---------- formatação ---------- */
+function tempo(s) {
+  if (!s) return "";
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+function megas(b) { return (b / 1048576).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " MB"; }
+function quando(ts) {
+  const d = new Date(ts * 1000), agora = new Date();
+  const min = Math.round((agora - d) / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === agora.toDateString()) return `hoje, ${hora}`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
+function caminhoCurto(p) {
+  const partes = p.split(/[\\/]/).filter(Boolean);
+  return partes.length > 3 ? partes.slice(-2).join(" \\ ") : p;
+}
+function esc(t) { return String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+/* ---------- api ---------- */
+async function api(rota, corpo) {
+  const r = await fetch(rota, corpo === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.erro || "Algo deu errado.");
+  return j;
+}
+
+/* ---------- estado visual ---------- */
+function aviso(texto, tipo = "erro") { const a = $("#aviso"); a.textContent = texto || ""; a.className = "aviso " + tipo; }
+function fase(f, etapa) {
+  $("#deck").dataset.fase = f;
+  if (etapa !== undefined) $("#etapa").innerHTML = etapa;
+}
+function rotuloBotao() {
+  const b = $("#converter");
+  if (st.rodando) { b.textContent = "Convertendo…"; b.disabled = true; return; }
+  b.textContent = `Converter para ${st.formato.toUpperCase()}`;
+  b.disabled = !st.info;
+}
+function descricaoFormato() {
+  return st.formato === "wav" ? "WAV sem perdas" : `MP3 ${st.qualidade} kbps`;
+}
+
+function mostrarFaixa(info) {
+  const capa = $("#capa");
+  if (!info) {
+    capa.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>';
+    $("#titulo").textContent = "Nenhuma faixa ainda";
+    $("#sub").textContent = "O vídeo aparece aqui assim que você colar o link.";
+    $("#duracao").textContent = "";
+    $("#linha-playlist").hidden = true;
+    desenharOnda("");
+    return;
+  }
+  capa.innerHTML = info.thumb ? `<img src="${esc(info.thumb)}" alt="">` : "";
+  $("#titulo").textContent = info.titulo;
+  const sub = info.tipo === "playlist" ? `${info.faixas} faixas${info.canal ? ", de " + info.canal : ""}` : info.canal;
+  $("#sub").textContent = sub || "YouTube";
+  $("#duracao").textContent = tempo(info.duracao);
+  $("#linha-playlist").hidden = !(info.tipo === "video" && info.tem_playlist);
+  desenharOnda(info.id || info.titulo);
+}
+
+/* ---------- link ---------- */
+let espera = null, consulta = 0;
+async function analisar(url) {
+  url = url.trim();
+  if (url === st.url) return;
+  st.url = url; st.info = null; aviso("");
+  rotuloBotao(); definirPct(0);
+  if (!url) { mostrarFaixa(null); fase("vazio", "Aguardando um link"); return; }
+  if (!ytRegex.test(url)) { mostrarFaixa(null); fase("erro", "Link não reconhecido"); aviso("Esse link não parece ser do YouTube. Copie o endereço do vídeo e cole de novo."); return; }
+  const minha = ++consulta;
+  fase("buscando", "Buscando o vídeo…");
+  try {
+    const info = await api("/api/info", { url });
+    if (minha !== consulta) return;
+    st.info = info; mostrarFaixa(info);
+    fase("pronto", `Pronto para ${descricaoFormato()}`);
+  } catch (e) {
+    if (minha !== consulta) return;
+    mostrarFaixa(null); fase("erro", "Não encontrado"); aviso(e.message);
+  }
+  rotuloBotao();
+}
+$("#link").addEventListener("input", (e) => { clearTimeout(espera); espera = setTimeout(() => analisar(e.target.value), 450); });
+$("#link").addEventListener("keydown", (e) => { if (e.key === "Enter" && st.info && !st.rodando) converter(); });
+$("#colar").addEventListener("click", async () => {
+  const { texto } = await api("/api/colar", {});
+  if (!texto) { aviso("A área de transferência está vazia. Copie o link do vídeo primeiro.", "info"); return; }
+  $("#link").value = texto; analisar(texto);
+});
+
+/* ---------- ajustes ---------- */
+function grupoRadio(sel, aoMudar) {
+  const g = $(sel);
+  g.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-valor]"); if (!b || st.rodando) return;
+    g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", x === b));
+    g.dataset.valor = b.dataset.valor; aoMudar(b.dataset.valor);
+  });
+  g.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    const bs = [...g.querySelectorAll("button")], i = bs.findIndex((x) => x.getAttribute("aria-checked") === "true");
+    const prox = bs[(i + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length];
+    prox.click(); prox.focus();
+  });
+}
+grupoRadio("#formato", (v) => {
+  st.formato = v;
+  $("#linha-qualidade").hidden = v === "wav"; $("#linha-wav").hidden = v !== "wav";
+  if (st.info && !st.rodando) fase("pronto", `Pronto para ${descricaoFormato()}`);
+  rotuloBotao();
+});
+grupoRadio("#qualidade", (v) => { st.qualidade = v; if (st.info && !st.rodando) fase("pronto", `Pronto para ${descricaoFormato()}`); });
+$("#pasta").addEventListener("click", () => api("/api/mostrar", {}));
+$("#alterar").addEventListener("click", async () => { const { pasta } = await api("/api/pasta", {}); mostrarPasta(pasta); });
+function mostrarPasta(p) { $("#pasta-txt").textContent = caminhoCurto(p); $("#pasta").title = p; }
+
+/* ---------- conversão ---------- */
+async function converter() {
+  if (!st.info || st.rodando) return;
+  aviso("");
+  const playlist = st.info.tipo === "playlist" || $("#playlist").checked;
+  try {
+    const { job } = await api("/api/converter", { url: st.url, formato: st.formato, qualidade: st.qualidade, playlist });
+    st.job = job; st.rodando = true; rotuloBotao();
+    definirPct(0); fase("iniciando", "Preparando…");
+    acompanhar();
+  } catch (e) { aviso(e.message); }
+}
+$("#converter").addEventListener("click", converter);
+
+function aplicarEstado(e) {
+  if (!st.rodando || e.job !== st.job) return;
+  const prefixo = e.total > 1 ? `Faixa ${e.item} de ${e.total}, ` : "";
+  const geral = e.total > 1 ? ((e.item - 1) + e.pct / 100) / e.total * 100 : e.pct;
+  if (e.fase === "baixando") { fase("baixando", `${prefixo}${e.total > 1 ? "baixando" : "Baixando o áudio"}`); definirPct(geral * 0.85); }
+  else if (e.fase === "convertendo") { fase("convertendo", `${prefixo}${e.total > 1 ? "convertendo" : "Convertendo para " + descricaoFormato()}`); definirPct(Math.max(geral * 0.85, 85)); }
+  else if (e.fase === "concluido") {
+    st.rodando = false; definirPct(100);
+    fase("concluido", `Salvo em ${esc(caminhoCurto(e.mensagem))} <button class="link-pasta" type="button" id="ver-pasta">Mostrar</button>`);
+    $("#ver-pasta").onclick = () => api("/api/mostrar", { arquivo: ultimoArquivo });
+    rotuloBotao();
+  } else if (e.fase === "erro") {
+    st.rodando = false; fase("erro", "A conversão parou"); aviso(e.mensagem); rotuloBotao();
+  }
+}
+
+let ultimoArquivo = "";
+function desenharHistorico(h) {
+  $("#contagem").textContent = h.length ? h.length : "";
+  $("#lista").hidden = !h.length; $("#vazio").hidden = !!h.length;
+  const novos = st.totalHist >= 0 ? h.length - st.totalHist : 0;
+  st.totalHist = h.length;
+  ultimoArquivo = h[0]?.arquivo || "";
+  $("#lista").innerHTML = h.map((x, i) => `
+    <li class="${i < novos ? "novo" : ""}">
+      ${x.thumb ? `<img class="mini" src="${esc(x.thumb)}" alt="">` : `<span class="mini"></span>`}
+      <div class="item-txt">
+        <p class="item-titulo" title="${esc(x.titulo)}">${esc(x.titulo)}</p>
+        <p class="item-meta"><span class="selo">${esc(x.formato)}</span><span>${esc(x.qualidade)}</span><span>${megas(x.tamanho)}</span><span>${quando(x.quando)}</span></p>
+      </div>
+      <div class="acoes">
+        <button class="icone" type="button" data-abrir="${i}" title="Tocar" aria-label="Tocar ${esc(x.titulo)}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        </button>
+        <button class="icone" type="button" data-mostrar="${i}" title="Mostrar na pasta" aria-label="Mostrar ${esc(x.titulo)} na pasta">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg>
+        </button>
+      </div>
+    </li>`).join("");
+  $("#lista").onclick = (ev) => {
+    const b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.abrir) api("/api/abrir", { arquivo: h[b.dataset.abrir].arquivo });
+    if (b.dataset.mostrar) api("/api/mostrar", { arquivo: h[b.dataset.mostrar].arquivo });
+  };
+}
+
+let timer = null, assinaturaHist = "";
+async function acompanhar() {
+  clearTimeout(timer);
+  try {
+    const r = await api("/api/estado");
+    aplicarEstado(r.estado);
+    const assinatura = r.historico.length + ":" + (r.historico[0]?.quando || 0);
+    if (assinatura !== assinaturaHist) { assinaturaHist = assinatura; desenharHistorico(r.historico); }
+    if ($("#pasta").title !== r.pasta) mostrarPasta(r.pasta);
+    if (!r.ffmpeg) aviso("O ffmpeg não foi encontrado. Instale com: winget install Gyan.FFmpeg", "info");
+  } catch { /* servidor reiniciando; tenta de novo */ }
+  timer = setTimeout(acompanhar, st.rodando ? 350 : 2500);
+}
+
+window.addEventListener("pagehide", () => navigator.sendBeacon("/api/sair"));
+// janelas antigas lembram o tamanho estreito: abre no tamanho certo
+if (window.outerWidth < 940 || window.outerHeight < 600) {
+  const w = 1060, h = 660;
+  try { window.resizeTo(w, h); window.moveTo(Math.max(0, (screen.availWidth - w) / 2), Math.max(0, (screen.availHeight - h) / 2)); } catch {}
+}
+montarOnda(); acompanhar(); $("#link").focus();
+</script>
+</body>
+</html>
