@@ -17,7 +17,7 @@ Cole o link de um vídeo ou de uma playlist, escolha o formato e clique em conve
 
 ## Instalação
 
-Precisa de Windows 10 ou 11.
+Precisa de Windows 10 ou 11. Para o passo a passo com imagens, veja o **[guia Como instalar o Onda](https://claude.ai/artifact/UFR129RWcceJXzw8eM8ajM)**.
 
 1. Baixe o **[Onda.zip](https://github.com/dudesltda/onda/releases/latest/download/Onda.zip)**.
 2. Clique com o botão direito no arquivo baixado e escolha **Extrair Tudo**.
