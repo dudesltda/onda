@@ -90,6 +90,15 @@ def mensagem_amigavel(erro):
     return "Não deu para converter: " + texto[:220]
 
 
+def localizar_ffmpeg():
+    # logo após instalar pelo winget o PATH antigo ainda não tem o ffmpeg
+    if shutil.which("ffmpeg"):
+        return shutil.which("ffmpeg")
+    base = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet"
+    candidatos = [base / "Links" / "ffmpeg.exe", *base.glob("Packages/*FFmpeg*/**/bin/ffmpeg.exe")]
+    return next((str(c) for c in candidatos if c.is_file()), None)
+
+
 def ler_area_transferencia():
     user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
     user32.GetClipboardData.restype = ctypes.c_void_p
@@ -207,6 +216,8 @@ def converter(url, formato, qualidade, playlist, job):
         "no_warnings": True,
         "windowsfilenames": True,
     }
+    if localizar_ffmpeg():
+        opcoes["ffmpeg_location"] = localizar_ffmpeg()
     try:
         with yt_dlp.YoutubeDL(opcoes) as ydl:
             ydl.download([url])
@@ -240,7 +251,7 @@ class Manipulador(BaseHTTPRequestHandler):
         elif rota == "/api/estado":
             with trava:
                 self.responder({"estado": estado, "historico": historico, "pasta": config["pasta"],
-                                "ffmpeg": bool(shutil.which("ffmpeg"))})
+                                "ffmpeg": bool(localizar_ffmpeg())})
         else:
             self.responder({"erro": "rota desconhecida"}, 404)
 
